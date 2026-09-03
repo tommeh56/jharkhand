@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Jharkhand Sahyog - Live Challenge Map &amp; Heatmap</title>
+<!-- Tailwind CSS (v3) -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Montserrat:wght@600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Config injected from prompt instructions -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-primary": "#ffffff",
+                    "inverse-primary": "#b6c4ff",
+                    "on-primary-container": "#90a8ff",
+                    "error-container": "#ffdad6",
+                    "primary-fixed": "#dce1ff",
+                    "on-primary-fixed": "#00164e",
+                    "tertiary-fixed-dim": "#c4c7c9",
+                    "tertiary-container": "#3d4143",
+                    "secondary": "#0058be",
+                    "secondary-container": "#2170e4",
+                    "surface-tint": "#4059aa",
+                    "on-tertiary-fixed": "#191c1e",
+                    "on-error": "#ffffff",
+                    "on-surface": "#0d1c2e",
+                    "inverse-on-surface": "#eaf1ff",
+                    "error": "#ba1a1a",
+                    "background": "#f8f9ff",
+                    "surface-dim": "#ccdbf3",
+                    "surface-variant": "#d5e3fc",
+                    "inverse-surface": "#233144",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#444749",
+                    "tertiary-fixed": "#e0e3e5",
+                    "on-secondary-container": "#fefcff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#aaadaf",
+                    "surface-bright": "#f8f9ff",
+                    "on-primary-fixed-variant": "#264191",
+                    "primary-fixed-dim": "#b6c4ff",
+                    "surface-container-highest": "#d5e3fc",
+                    "on-surface-variant": "#444651",
+                    "on-secondary-fixed": "#001a42",
+                    "on-background": "#0d1c2e",
+                    "primary-container": "#1e3a8a",
+                    "on-error-container": "#93000a",
+                    "tertiary": "#272b2d",
+                    "primary": "#00236f",
+                    "secondary-fixed-dim": "#adc6ff",
+                    "surface-container-low": "#eff4ff",
+                    "outline-variant": "#c5c5d3",
+                    "on-tertiary": "#ffffff",
+                    "surface-container": "#e6eeff",
+                    "on-secondary-fixed-variant": "#004395",
+                    "surface": "#f8f9ff",
+                    "surface-container-high": "#dce9ff",
+                    "outline": "#757682",
+                    "secondary-fixed": "#d8e2ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "margin-desktop": "48px",
+                    "stack-lg": "32px",
+                    "stack-md": "16px",
+                    "gutter": "24px",
+                    "stack-sm": "8px",
+                    "container-max": "1280px",
+                    "margin-mobile": "16px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-xl": ["Montserrat"],
+                    "body-sm": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Montserrat"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Montserrat"],
+                    "headline-lg-mobile": ["Montserrat"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "16px", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.background');
+            color: theme('colors.on-background');
+        }
+        /* Custom scrollbar for clean corporate look */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: theme('colors.outline-variant'); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: theme('colors.outline'); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden text-body-md font-body-md">
+<!-- Shared Component: SideNavBar -->
+<!-- JSON mapped semantic shell -->
+<nav class="hidden md:flex flex-col h-full py-6 border-r border-outline-variant dark:border-outline bg-surface-container-low dark:bg-surface-container-highest docked left-0 h-full w-64 z-20 shrink-0">
+<!-- Header -->
+<div class="px-6 mb-8 flex flex-col gap-2">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-white shadow-sm mb-2 flex items-center justify-center">
+<img alt="Government Seal of Jharkhand" class="w-full h-full object-cover" data-alt="Official Government Seal of Jharkhand, India. Clean digital rendering on a white background. Deep green and gold colors. Corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDRVsXSIKeuKQyju9Wq89Hpc7h7gNG61Lw8uopph8qEQ5sOQGu3_2mfeBX3AksBSQ0NdhZ_hNsBGx2ZOtYnn9AW0baBxxWZKNjVsz1A-2V-Xim9sJ7jtrPkkYvPAOxO3xh4kAiviT5g7gCo82Y8iAfLpmggy8PJ86RbCmJk6Ok3vA2cYvWKW8rloPs460Fq0ngfKQcmzRl4TMFBVY7MBADdDlGjdOXHmtfa81lZ6Us8wSQwICnPxZ3I"/>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim">Admin Portal</h1>
+<p class="font-label-md text-label-md text-on-surface-variant">State Dashboard</p>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-4 mb-6">
+<button class="w-full flex items-center justify-center gap-2 bg-primary text-on-primary py-3 rounded-lg font-label-md text-label-md hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Challenge
+            </button>
+</div>
+<!-- Main Navigation -->
+<div class="flex-1 overflow-y-auto px-2">
+<ul class="space-y-1 font-label-md text-label-md">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 bg-secondary-container dark:bg-secondary text-on-secondary-container dark:text-on-secondary rounded-full mx-2 hover:bg-surface-variant dark:hover:bg-tertiary-container transition-all scale-95 duration-100" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">report_problem</span>
+                        Citizen Reports
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">school</span>
+                        University Portal
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">history_edu</span>
+                        Activity Logs
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">auto_graph</span>
+                        Public Impact
+                    </a>
+</li>
+</ul>
+</div>
+<!-- Footer Navigation -->
+<div class="mt-auto pt-4 border-t border-outline-variant px-2">
+<ul class="space-y-1 font-label-md text-label-md">
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">settings</span>
+                        Settings
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant dark:text-on-tertiary-container hover:bg-surface-variant dark:hover:bg-tertiary-container rounded-full mx-2 transition-all" href="#">
+<span class="material-symbols-outlined">help_outline</span>
+                        Help
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col h-full overflow-hidden relative">
+<!-- Shared Component: TopNavBar -->
+<header class="flex justify-between items-center w-full px-margin-desktop h-16 max-w-container-max mx-auto bg-surface dark:bg-background text-primary dark:text-primary-fixed font-headline-md text-headline-md docked full-width top-0 border-b border-outline-variant dark:border-outline flat no shadows z-10 shrink-0">
+<!-- Mobile Menu Toggle (only visible on small screens) -->
+<button class="md:hidden p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-colors">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<!-- Brand Logo / Product Name -->
+<div class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed">
+                Jharkhand Sahyog
+            </div>
+<!-- Navigation Links (Hidden on mobile) -->
+<nav class="hidden md:flex items-center gap-8 font-label-md text-label-md h-full">
+<a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors h-full flex items-center" href="#">Challenges</a>
+<a class="text-secondary dark:text-secondary-fixed border-b-2 border-secondary dark:border-secondary-fixed pb-1 h-full flex items-center opacity-80 duration-150" href="#">Map</a>
+<a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors h-full flex items-center" href="#">University Hub</a>
+<a class="text-on-surface-variant dark:text-on-tertiary-container hover:text-secondary dark:hover:text-secondary-fixed transition-colors h-full flex items-center" href="#">Impact</a>
+</nav>
+<!-- Right Side: Search & Icons -->
+<div class="flex items-center gap-4">
+<!-- Search Bar -->
+<div class="relative hidden sm:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-[20px]">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container rounded-full border border-outline-variant focus:border-secondary focus:ring-1 focus:ring-secondary text-body-sm text-on-surface outline-none w-48 transition-all font-body-sm" placeholder="Search areas..." type="text"/>
+</div>
+<!-- Trailing Icons -->
+<div class="flex items-center gap-2 text-on-surface-variant">
+<button class="p-2 hover:bg-surface-variant rounded-full transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="p-2 hover:bg-surface-variant rounded-full transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<main class="flex-1 overflow-y-auto bg-surface-bright flex flex-col md:flex-row relative">
+<!-- Left Panel: Interactive Map (Grayscale base) -->
+<div class="w-full md:w-2/3 h-[512px] md:h-full relative border-b md:border-b-0 md:border-r border-outline-variant flex flex-col bg-surface-container-lowest">
+<!-- Map Header / Controls -->
+<div class="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
+<div class="bg-surface/90 backdrop-blur-md border border-outline-variant rounded-lg p-3 shadow-sm pointer-events-auto flex flex-col gap-2">
+<h2 class="font-headline-sm text-headline-sm font-bold text-on-surface">Live Heatmap</h2>
+<div class="flex items-center gap-4 font-label-sm text-label-sm">
+<label class="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors">
+<input checked="" class="rounded border-outline text-secondary focus:ring-secondary w-4 h-4" type="checkbox"/>
+<span>Cluster Detection</span>
+</label>
+<label class="flex items-center gap-1 cursor-pointer hover:text-primary transition-colors">
+<input checked="" class="rounded border-outline text-secondary focus:ring-secondary w-4 h-4" type="checkbox"/>
+<span>Duplicates</span>
+</label>
+</div>
+</div>
+<!-- Map Tools -->
+<div class="flex flex-col gap-2 pointer-events-auto">
+<button class="w-10 h-10 bg-surface border border-outline-variant rounded-lg flex items-center justify-center text-on-surface hover:bg-surface-variant shadow-sm transition-colors" title="Zoom In">
+<span class="material-symbols-outlined">add</span>
+</button>
+<button class="w-10 h-10 bg-surface border border-outline-variant rounded-lg flex items-center justify-center text-on-surface hover:bg-surface-variant shadow-sm transition-colors" title="Zoom Out">
+<span class="material-symbols-outlined">remove</span>
+</button>
+<button class="w-10 h-10 bg-surface border border-outline-variant rounded-lg flex items-center justify-center text-on-surface hover:bg-surface-variant shadow-sm transition-colors mt-2" title="Reset View">
+<span class="material-symbols-outlined">my_location</span>
+</button>
+</div>
+</div>
+<!-- The Map Image Container (Placeholder for real map implementation) -->
+<div class="flex-1 w-full h-full relative overflow-hidden bg-tertiary-fixed-dim">
+<!-- Map Base Image (Grayscale as requested) -->
+<img alt="Map of Jharkhand" class="w-full h-full object-cover absolute inset-0 opacity-70" data-alt="A detailed, desaturated, light-mode grayscale street map of Jharkhand state in India, viewed from above. The map style is clean, modern, and corporate, resembling high-end GIS software interfaces. Roads, rivers, and district boundaries are visible but muted to allow data overlays to stand out." data-location="Jharkhand, India" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCPop1dK8y0nw4LsiJxD5L37pf0jXh-wGNy9ig6Qsqbyt5pZWH2VIU0LNzyDzMk1dK3DrrTxgE06mhbTPJyaW8w2GF2oTOJQNd6wiNiLW7gsEAUx9WTF_IAd3sN8XUs69sPcki39sDP2nvE2oh8-Ka7PHXCfLgbak-h0kQQOQ3fRVWUhCYV-gzHTmSdebYJeNJH8qn3Grb74pnhITskUDsT8H4eKB99JIIbiN7INc0P9dhCLvKaE7BY"/>
+<!-- Simulated Heatmap / Markers Overlay (CSS implementation for demonstration) -->
+<div class="absolute top-1/3 left-1/4">
+<div class="w-24 h-24 bg-error/20 rounded-full blur-xl absolute -translate-x-1/2 -translate-y-1/2"></div>
+<div class="w-12 h-12 bg-error/40 rounded-full blur-md absolute -translate-x-1/2 -translate-y-1/2"></div>
+<div class="w-4 h-4 bg-error rounded-full border-2 border-white shadow-sm absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform z-10"></div>
+<span class="absolute mt-3 -translate-x-1/2 whitespace-nowrap bg-surface px-2 py-0.5 rounded border border-outline-variant text-[10px] font-bold shadow-sm z-20">Ranchi (High)</span>
+</div>
+<div class="absolute top-1/2 left-2/3">
+<div class="w-16 h-16 bg-secondary/20 rounded-full blur-lg absolute -translate-x-1/2 -translate-y-1/2"></div>
+<div class="w-3 h-3 bg-secondary rounded-full border-2 border-white shadow-sm absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform z-10"></div>
+<span class="absolute mt-3 -translate-x-1/2 whitespace-nowrap bg-surface px-2 py-0.5 rounded border border-outline-variant text-[10px] font-bold shadow-sm z-20">Dhanbad</span>
+</div>
+<div class="absolute bottom-1/4 left-1/2">
+<div class="w-32 h-32 bg-[theme(colors.primary)]/10 rounded-full blur-2xl absolute -translate-x-1/2 -translate-y-1/2"></div>
+<div class="w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-125 transition-transform z-10"></div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Data, Filters & Impact Scores -->
+<div class="w-full md:w-1/3 h-[512px] md:h-full bg-surface-bright overflow-y-auto flex flex-col p-6 gap-6">
+<!-- Stats Bento Grid -->
+<section>
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider mb-4">Overview</h3>
+<div class="grid grid-cols-2 gap-4">
+<!-- Stat Card 1 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-4 flex flex-col justify-between col-span-2 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden">
+<div class="absolute top-0 right-0 w-24 h-24 bg-primary/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start mb-2 relative z-10">
+<span class="text-on-surface-variant font-label-sm text-label-sm">Total Challenges</span>
+<span class="material-symbols-outlined text-primary">dynamic_form</span>
+</div>
+<div class="relative z-10">
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface">1,492</span>
+<div class="flex items-center gap-1 text-[12px] text-green-600 font-medium mt-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
+                                    +12% this week
+                                </div>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-4 flex flex-col justify-between shadow-sm">
+<div class="flex justify-between items-start mb-2">
+<span class="text-on-surface-variant font-label-sm text-label-sm">Active Resol.</span>
+<span class="material-symbols-outlined text-secondary text-[18px]">build</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">348</span>
+</div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface border border-outline-variant rounded-xl p-4 flex flex-col justify-between shadow-sm bg-gradient-to-br from-surface to-surface-container">
+<div class="flex justify-between items-start mb-2">
+<span class="text-on-surface-variant font-label-sm text-label-sm">Impact Wins</span>
+<span class="material-symbols-outlined text-green-600 text-[18px]">emoji_events</span>
+</div>
+<div>
+<span class="font-headline-md text-headline-md font-bold text-on-surface">89</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Category Filters (Glassmorphism inspired) -->
+<section>
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Categories</h3>
+<button class="text-[12px] text-secondary hover:underline font-medium">Clear All</button>
+</div>
+<div class="flex flex-wrap gap-2">
+<button class="px-3 py-1.5 rounded-full border border-primary bg-primary/10 text-primary font-label-sm text-label-sm flex items-center gap-1 transition-colors hover:bg-primary/20">
+<span class="material-symbols-outlined text-[14px]">code</span>
+                            Software
+                            <span class="ml-1 bg-primary text-white text-[10px] px-1.5 py-0.5 rounded-full">42</span>
+</button>
+<button class="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">construction</span>
+                            Infrastructure
+                        </button>
+<button class="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">flood</span>
+                            Disaster Mgmt
+                        </button>
+<button class="px-3 py-1.5 rounded-full border border-outline-variant bg-surface text-on-surface-variant font-label-sm text-label-sm flex items-center gap-1 transition-colors hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[14px]">local_hospital</span>
+                            Health
+                        </button>
+</div>
+</section>
+<hr class="border-outline-variant"/>
+<!-- Challenge Impact Scores Sidebar -->
+<section class="flex-1 flex flex-col">
+<div class="flex justify-between items-center mb-4">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">Top Impact Scores</h3>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">filter_list</span>
+</button>
+</div>
+<!-- Scrollable list of high-impact challenges -->
+<div class="flex-1 overflow-y-auto pr-2 space-y-3">
+<!-- List Item 1 (Urgent) -->
+<div class="bg-surface border border-error-container rounded-lg p-4 cursor-pointer hover:border-error hover:shadow-[0_4px_12px_rgba(186,26,26,0.1)] transition-all relative overflow-hidden group">
+<!-- Severity Indicator strip -->
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-error"></div>
+<div class="pl-2">
+<div class="flex justify-between items-start mb-1">
+<span class="inline-flex items-center gap-1 bg-error text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">warning</span>
+                                        Critical
+                                    </span>
+<span class="text-[12px] text-on-surface-variant font-medium">Score: 94</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1 group-hover:text-primary transition-colors">Waterlogging in Low-Lying Areas</h4>
+<p class="text-[12px] text-on-surface-variant line-clamp-1 mb-2">Ranchi District • Infrastructure • Multiple duplicate reports detected.</p>
+<div class="flex items-center gap-4 text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-1" title="Affected Citizens">
+<span class="material-symbols-outlined text-[14px]">groups</span>
+<span>~5,000+</span>
+</div>
+<div class="flex items-center gap-1" title="Time active">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>48h</span>
+</div>
+</div>
+</div>
+</div>
+<!-- List Item 2 (High) -->
+<div class="bg-surface border border-outline-variant rounded-lg p-4 cursor-pointer hover:border-secondary hover:shadow-[0_4px_12px_rgba(0,88,190,0.1)] transition-all relative group">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-orange-400 rounded-l-lg"></div>
+<div class="pl-2">
+<div class="flex justify-between items-start mb-1">
+<span class="inline-flex items-center gap-1 bg-orange-100 text-orange-800 border border-orange-200 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase">
+                                        High Priority
+                                    </span>
+<span class="text-[12px] text-on-surface-variant font-medium">Score: 82</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1 group-hover:text-primary transition-colors">Rural Broadband Outage</h4>
+<p class="text-[12px] text-on-surface-variant line-clamp-1 mb-2">Dumka Block • Software/Comms • Affecting local e-panchayat nodes.</p>
+<div class="flex items-center gap-4 text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">groups</span>
+<span>~1,200</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>3d</span>
+</div>
+</div>
+</div>
+</div>
+<!-- List Item 3 (Medium) -->
+<div class="bg-surface border border-outline-variant rounded-lg p-4 cursor-pointer hover:border-secondary transition-all relative group opacity-80 hover:opacity-100">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-yellow-400 rounded-l-lg"></div>
+<div class="pl-2">
+<div class="flex justify-between items-start mb-1">
+<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase">
+                                        Medium
+                                    </span>
+<span class="text-[12px] text-on-surface-variant font-medium">Score: 65</span>
+</div>
+<h4 class="font-label-md text-label-md text-on-surface mb-1 group-hover:text-primary transition-colors">Gov Portal UI Accessibility</h4>
+<p class="text-[12px] text-on-surface-variant line-clamp-1 mb-2">Statewide • Software • Visual contrast issues reported.</p>
+<div class="flex items-center gap-4 text-[11px] text-on-surface-variant">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">groups</span>
+<span>Statewide</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>1w</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+</body></html>
