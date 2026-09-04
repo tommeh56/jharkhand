@@ -1,0 +1,11 @@
+*.env
+/challenge_map_analytics/
+/civic_challenges_directory_admin_sidebar_layout/
+/civic_synergy/
+/impact_story_rural_road_restoration/
+/node_modules/
+/public_impact_case_studies_admin_sidebar_layout/
+/report_a_challenge_jharkhand_sahyog/
+/ticket_26043_activity_log/
+/university_research_portal/
+/university_research_portal_admin_sidebar_layout/
