@@ -65,5 +65,14 @@ main { max-width: 1440px; padding: 36px 48px 64px; margin: auto; } .page-heading
 .location-map { width: 100%; height: 260px; overflow: hidden; border: 1px solid #9298a5; border-radius: 4px; }
 .selected-coordinates { color: var(--secondary); font-size: 11px; font-weight: 600; }
 
+.heatmap-canvas { height: 570px; background: #dce8e7; }
+.heatmap-canvas::after { display: none; }
+.heatmap-legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 12px 2px 0; color: var(--muted); font-size: 11px; }
+.heatmap-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; display: inline-block; border-radius: 50%; }
+.legend-dot.low { background: #2170e4; }
+.legend-dot.medium { background: #f0a32e; }
+.legend-dot.high { background: #d33a35; }
+
 @media (max-width: 960px) { .ticket-layout { grid-template-columns: 1fr; } }
 @media (max-width: 680px) { .ticket-summary-bar { grid-template-columns: 1fr 1fr; gap: 16px; } .ticket-note { grid-column: 1 / -1; padding: 14px 0 0; border-left: 0; border-top: 1px solid var(--outline); } .ticket-list { padding: 18px; } .ticket-row { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; align-items: start; } .ticket-icon { width: 34px; height: 34px; } .ticket-action { grid-column: 2; justify-items: start; min-width: 0; } .ticket-action .primary-button, .ticket-action .accepted-button { width: 100%; } }

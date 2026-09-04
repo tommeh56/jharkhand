@@ -4,6 +4,10 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
+// Set VITE_SUPABASE_URL and VITE_SUPABASE_KEY in a local .env file.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUPABASE_URL';
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'SUPABASE_KEY';
+
 const navItems = [
   { label: 'Dashboard', icon: 'dashboard', path: '/' },
   { label: 'Tickets', icon: 'confirmation_number', path: '/tickets' },
@@ -129,7 +133,87 @@ function TicketsPage() {
   </>;
 }
 
-function MapPage() { return <><PageHeader eyebrow="Geospatial problem map" title="Live challenge map" description="Locate, filter, and prioritize civic issues by district." action={<button className="primary-button"><Icon>download</Icon> Export data</button>} /><div className="map-toolbar"><button className="filter-active"><Icon>layers</Icon> All challenges</button><button><Icon>filter_alt</Icon> Filter by category</button><button><Icon>calendar_month</Icon> Last 30 days</button></div><section className="map-layout"><div className="map-canvas"><div className="map-grid" /><div className="map-label label-ranchi">Ranchi<span>214</span></div><div className="map-label label-bokaro">Bokaro<span>86</span></div><div className="map-label label-dhanbad">Dhanbad<span>143</span></div><div className="map-label label-jam">Jamshedpur<span>98</span></div><div className="map-marker m1" /><div className="map-marker m2" /><div className="map-marker m3" /><div className="map-marker m4" /><div className="map-marker m5" /><div className="map-compass">N<br /><span>↑</span></div></div><aside className="map-sidebar panel"><div className="panel-head"><div><span className="eyebrow">Live view</span><h2>Priority areas</h2></div><strong className="live-dot">LIVE</strong></div>{['Ranchi Municipal Area', 'Dhanbad Coal Belt', 'Bokaro Ward 12'].map((name, i) => <button className="area-row" key={name}><span className={`priority p${i + 1}`}>{i + 1}</span><span><b>{name}</b><small>{[214, 143, 86][i]} open challenges</small></span><Icon>chevron_right</Icon></button>)}</aside></section></> }
+function getHeatmapColor(weight, maximumWeight) {
+  const intensity = maximumWeight ? weight / maximumWeight : 0;
+  if (intensity >= 0.8) return '#d33a35';
+  if (intensity >= 0.6) return '#f0a32e';
+  if (intensity >= 0.4) return '#20a6a6';
+  return '#2170e4';
+}
+
+function JharkhandHeatmap({ onPointsLoaded }) {
+  const mapElement = useRef(null);
+  const onPointsLoadedRef = useRef(onPointsLoaded);
+  onPointsLoadedRef.current = onPointsLoaded;
+
+  useEffect(() => {
+    const map = L.map(mapElement.current, { zoomControl: true }).setView([23.6, 85.6], 7);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    const loadHeatmapPoints = async () => {
+      try {
+        if (SUPABASE_URL === 'SUPABASE_URL' || SUPABASE_KEY === 'SUPABASE_KEY') {
+          throw new Error('Supabase environment variables are not configured.');
+        }
+        const response = await fetch(`${SUPABASE_URL}/rest/v1/issuecond?select=issue_details`, {
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            Accept: 'application/json',
+          },
+        });
+        if (!response.ok) {
+          const errorBody = await response.text();
+          throw new Error(`Supabase request failed (${response.status}): ${errorBody}`);
+        }
+        const rows = await response.json();
+        const points = rows.map(row => {
+          const details = typeof row.issue_details === 'string' ? JSON.parse(row.issue_details) : row.issue_details;
+          return {
+            name: details.category || details.name || details.district || details.ISSUEID || 'Civic issue',
+            latitude: Number(details.latitude),
+            longitude: Number(details.longitude),
+            weight: Number(details.weight),
+          };
+        }).filter(point => Number.isFinite(point.latitude) && Number.isFinite(point.longitude) && Number.isFinite(point.weight));
+        const maximumWeight = Math.max(...points.map(point => point.weight), 0);
+        onPointsLoadedRef.current(points);
+        if (points.length) {
+          map.fitBounds(L.latLngBounds(points.map(point => [point.latitude, point.longitude])), { padding: [30, 30], maxZoom: 10 });
+        }
+        points.forEach(point => {
+          const color = getHeatmapColor(point.weight, maximumWeight);
+          L.circle([point.latitude, point.longitude], {
+            radius: 300 + point.weight * 55,
+            color,
+            fillColor: color,
+            fillOpacity: 0.58,
+            opacity: 0.9,
+            weight: 2,
+          }).bindTooltip(`${point.name}: weight ${point.weight}`, { direction: 'top' }).addTo(map);
+        });
+      } catch (requestError) {
+        console.error('Unable to load heatmap data:', requestError);
+        onPointsLoadedRef.current([], requestError instanceof Error ? requestError.message : 'Unable to load heatmap data.');
+      }
+    };
+
+    loadHeatmapPoints();
+
+    return () => map.remove();
+  }, []);
+
+  return <div ref={mapElement} className="map-canvas heatmap-canvas" aria-label="Jharkhand civic challenge heatmap" />;
+}
+
+function MapPage() {
+  const [heatmapPoints, setHeatmapPoints] = useState([]);
+  const [heatmapError, setHeatmapError] = useState('');
+  const handlePointsLoaded = (points, errorMessage = '') => { setHeatmapPoints(points); setHeatmapError(errorMessage); };
+  return <><PageHeader eyebrow="Geospatial problem map" title="Live challenge map" description="Locate, filter, and prioritize civic issues by district." action={<button className="primary-button"><Icon>download</Icon> Export data</button>} /><div className="map-toolbar"><button className="filter-active"><Icon>layers</Icon> All challenges</button><button><Icon>filter_alt</Icon> Filter by category</button><button><Icon>calendar_month</Icon> Last 30 days</button></div><section className="map-layout"><div><JharkhandHeatmap onPointsLoaded={handlePointsLoaded} />{heatmapError && <div className="error-message"><Icon>error</Icon>{heatmapError}</div>}<div className="heatmap-legend"><span><i className="legend-dot low" />Lower weight</span><span><i className="legend-dot medium" />Medium</span><span><i className="legend-dot high" />Higher weight</span></div></div><aside className="map-sidebar panel"><div className="panel-head"><div><span className="eyebrow">Live view</span><h2>Priority areas</h2></div><strong className="live-dot">LIVE</strong></div>{heatmapPoints.slice().sort((first, second) => second.weight - first.weight).slice(0, 3).map((point, index) => <div className="area-row" key={`${point.latitude}-${point.longitude}`}><span className={`priority p${index + 1}`}>{index + 1}</span><span><b>{point.name}</b><small>weight {point.weight}</small></span><Icon>chevron_right</Icon></div>)}</aside></section></>;
+}
 
 function LegacyReportPage() {
   const [problemText, setProblemText] = useState('');
@@ -178,16 +262,42 @@ function ReportPage() {
 
   const submitReport = async event => {
     event.preventDefault();
+    if (!coordinates) {
+      setError('Please select your location on the map before continuing.');
+      return;
+    }
     setIsLoading(true);
     setResult(null);
     setError('');
     try {
-      const response = await fetch('http://localhost:8000/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: problemText }) });
+      const predictionResponse = await fetch('http://localhost:8000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: problemText }),
+      });
+      const predictionOutput = await predictionResponse.text();
+      if (!predictionResponse.ok) throw new Error(predictionOutput || 'Unable to classify the report.');
+      let predictionValue;
+      try { predictionValue = JSON.parse(predictionOutput); } catch { predictionValue = predictionOutput; }
+      const predictedDescription = typeof predictionValue === 'string'
+        ? predictionValue
+        : predictionValue?.category || predictionOutput;
+
+      const response = await fetch('http://localhost:8000/issues', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          description: predictedDescription,
+        }),
+      });
+      console.log(predictedDescription)
       const responseText = await response.text();
       let responseValue;
       try { responseValue = JSON.parse(responseText); } catch { responseValue = responseText; }
       if (!response.ok) throw new Error(typeof responseValue === 'string' ? responseValue : JSON.stringify(responseValue));
-      setResult(responseValue);
+      setResult(predictionValue);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to reach the prediction service.');
     } finally {
