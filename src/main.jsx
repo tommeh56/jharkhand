@@ -1,5 +1,7 @@
-import { StrictMode, useState } from 'react';
+import { StrictMode, useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
 const navItems = [
@@ -27,6 +29,67 @@ const activeTickets = [
 
 function Icon({ children }) { return <span className="material-symbols-outlined">{children}</span>; }
 
+function LocationPicker({ onSelect }) {
+  const mapElement = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const onSelectRef = useRef(onSelect);
+  const defaultPosition = [23.3441, 85.3096];
+  const [searchText, setSearchText] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    const map = L.map(mapElement.current).setView(defaultPosition, 12);
+    mapRef.current = map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+    }).addTo(map);
+
+    const chooseLocation = event => {
+      const coordinates = { latitude: event.latlng.lat, longitude: event.latlng.lng };
+      if (markerRef.current) markerRef.current.remove();
+      markerRef.current = L.marker(event.latlng).addTo(map);
+      onSelectRef.current(coordinates);
+      console.log('Selected location coordinates:', coordinates);
+    };
+    map.on('click', chooseLocation);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        position => map.setView([position.coords.latitude, position.coords.longitude], 14),
+        () => console.info('Location permission was not granted; showing the default map area.'),
+      );
+    }
+
+    return () => map.remove();
+  }, []);
+
+  const searchLocation = async () => {
+    if (!searchText.trim()) return;
+    setIsSearching(true);
+    setSearchError('');
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(searchText)}`);
+      if (!response.ok) throw new Error('Location search failed.');
+      const results = await response.json();
+      if (!results.length) throw new Error('No matching location found.');
+      const match = results[0];
+      const position = [Number(match.lat), Number(match.lon)];
+      mapRef.current.setView(position, 16);
+      if (markerRef.current) markerRef.current.remove();
+      markerRef.current = L.marker(position).addTo(mapRef.current).bindPopup('Pinpoint this location on the map').openPopup();
+    } catch (searchRequestError) {
+      setSearchError(searchRequestError instanceof Error ? searchRequestError.message : 'Location search failed.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  return <div className="location-picker"><p>Search for a nearby place, then click the exact point on the map to pinpoint your location.</p><div className="location-search"><input aria-label="Search for a location" value={searchText} onChange={event => setSearchText(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); searchLocation(); } }} placeholder="Search a place or address" /><button className="outline-button" type="button" onClick={searchLocation} disabled={isSearching}>{isSearching ? 'Searching...' : <><Icon>search</Icon> Search</>}</button></div>{searchError && <span className="location-search-error">{searchError}</span>}<div ref={mapElement} className="location-map" /></div>;
+}
+
 function Sidebar({ path, onNavigate }) {
   return <aside className="sidebar">
     <div>
@@ -42,7 +105,7 @@ function Sidebar({ path, onNavigate }) {
 
 function Header({ path, onNavigate }) {
   const [search, setSearch] = useState('');
-  return <header className="topbar"><button className="mobile-menu" aria-label="Open navigation"><Icon>menu</Icon></button><button className="wordmark" onClick={() => onNavigate('/')}><span>Jharkhand</span> Sahyog</button><nav className="public-nav"><button className={path === '/' ? 'selected' : ''} onClick={() => onNavigate('/')}>Challenges</button><button className={path === '/map' ? 'selected' : ''} onClick={() => onNavigate('/map')}>Map</button><button className={path === '/university' ? 'selected' : ''} onClick={() => onNavigate('/university')}>University Hub</button><button className={path === '/impact' || path === '/story' ? 'selected' : ''} onClick={() => onNavigate('/impact')}>Impact</button></nav><div className="top-actions"><div className="search"><Icon>search</Icon><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." /></div><button className="icon-button" title="Notifications"><Icon>notifications</Icon></button><div className="avatar">JA</div></div></header>;
+  return <header className="topbar"><button className="mobile-menu" aria-label="Open navigation"><Icon>menu</Icon></button><button className="wordmark" onClick={() => onNavigate('/')}><span>Jharkhand</span> Samadhan</button><nav className="public-nav"><button className={path === '/' ? 'selected' : ''} onClick={() => onNavigate('/')}>Challenges</button><button className={path === '/map' ? 'selected' : ''} onClick={() => onNavigate('/map')}>Map</button><button className={path === '/university' ? 'selected' : ''} onClick={() => onNavigate('/university')}>University Hub</button><button className={path === '/impact' || path === '/story' ? 'selected' : ''} onClick={() => onNavigate('/impact')}>Impact</button></nav><div className="top-actions"><div className="search"><Icon>search</Icon><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search..." /></div><button className="icon-button" title="Notifications"><Icon>notifications</Icon></button><div className="avatar">JA</div></div></header>;
 }
 
 function Layout({ children, path, onNavigate }) { return <div className="app-layout"><Sidebar path={path} onNavigate={onNavigate} /><div className="main-column"><Header path={path} onNavigate={onNavigate} /><main>{children}</main></div></div>; }
@@ -68,11 +131,76 @@ function TicketsPage() {
 
 function MapPage() { return <><PageHeader eyebrow="Geospatial problem map" title="Live challenge map" description="Locate, filter, and prioritize civic issues by district." action={<button className="primary-button"><Icon>download</Icon> Export data</button>} /><div className="map-toolbar"><button className="filter-active"><Icon>layers</Icon> All challenges</button><button><Icon>filter_alt</Icon> Filter by category</button><button><Icon>calendar_month</Icon> Last 30 days</button></div><section className="map-layout"><div className="map-canvas"><div className="map-grid" /><div className="map-label label-ranchi">Ranchi<span>214</span></div><div className="map-label label-bokaro">Bokaro<span>86</span></div><div className="map-label label-dhanbad">Dhanbad<span>143</span></div><div className="map-label label-jam">Jamshedpur<span>98</span></div><div className="map-marker m1" /><div className="map-marker m2" /><div className="map-marker m3" /><div className="map-marker m4" /><div className="map-marker m5" /><div className="map-compass">N<br /><span>↑</span></div></div><aside className="map-sidebar panel"><div className="panel-head"><div><span className="eyebrow">Live view</span><h2>Priority areas</h2></div><strong className="live-dot">LIVE</strong></div>{['Ranchi Municipal Area', 'Dhanbad Coal Belt', 'Bokaro Ward 12'].map((name, i) => <button className="area-row" key={name}><span className={`priority p${i + 1}`}>{i + 1}</span><span><b>{name}</b><small>{[214, 143, 86][i]} open challenges</small></span><Icon>chevron_right</Icon></button>)}</aside></section></> }
 
-function ReportPage() { const [submitted, setSubmitted] = useState(false); return <><PageHeader eyebrow="Citizen services / New report" title="Report a civic issue" description="Your report helps improve Jharkhand. Let's gather the details." /><div className="progress"><span className="filled" /><span className="progress-label active">1 Initial details</span><span className="progress-label">2 AI refinement</span><span className="progress-label">3 Review &amp; submit</span></div><section className="report-grid"><form className="panel form-panel" onSubmit={e => { e.preventDefault(); setSubmitted(true); }}><div className="panel-head"><div><span className="eyebrow">Step 1 of 3</span><h2>Issue details</h2></div><span className="required">* Required fields</span></div><label>Issue title<input required placeholder="e.g. Severe potholes on Main Road" /></label><div className="two-col"><label>Category<select required defaultValue=""><option value="" disabled>Select a category</option><option>Infrastructure &amp; Roads</option><option>Water Supply</option><option>Sanitation &amp; Waste</option><option>Electricity</option></select></label><label>Location<input required placeholder="e.g. Ranchi, Hinoo Area" /></label></div><label>Description <textarea rows="5" placeholder="Briefly describe the issue..." /></label><label>Photo evidence <div className="upload"><Icon>add_a_photo</Icon><b>Click to upload</b><span>or drag and drop images here</span></div></label><div className="form-actions"><button type="button" className="outline-button">Save draft</button><button className="primary-button" type="submit">Continue to refinement <Icon>arrow_forward</Icon></button></div>{submitted && <div className="success"><Icon>check_circle</Icon> Draft saved. Your report is ready for AI refinement.</div>}</form><aside className="ai-card"><div className="ai-orb"><Icon>auto_awesome</Icon></div><span className="eyebrow">Powered by Sahyog AI</span><h2>AI Problem Refiner</h2><p>I'll help structure your report for faster government action by asking a few clarifying questions.</p><div className="ai-question"><Icon>lightbulb</Icon><div><b>Tip</b><span>Specific landmarks and nearby areas help field teams respond faster.</span></div></div></aside></section></> }
+function LegacyReportPage() {
+  const [problemText, setProblemText] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitReport = async event => {
+    event.preventDefault();
+    if (!coordinates) {
+      setError('Please select your location on the map before continuing.');
+      return;
+    }
+    setIsLoading(true);
+    setResult(null);
+    setError('');
+
+    try {
+      const response = await fetch('http://localhost:8000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: problemText }),
+      });
+      const responseText = await response.text();
+      let responseValue;
+      try { responseValue = JSON.parse(responseText); } catch { responseValue = responseText; }
+      if (!response.ok) throw new Error(typeof responseValue === 'string' ? responseValue : JSON.stringify(responseValue));
+      setResult(responseValue);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to reach the prediction service.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return <><PageHeader eyebrow="Citizen services / New report" title="Report a civic issue" description="Your report helps improve Jharkhand. Let's gather the details." /><div className="progress"><span className="filled" /><span className="progress-label active">1 Initial details</span><span className="progress-label">2 AI refinement</span><span className="progress-label">3 Review &amp; submit</span></div><section className="report-grid"><form className="panel form-panel" onSubmit={submitReport}><div className="panel-head"><div><span className="eyebrow">Step 1 of 3</span><h2>Issue details</h2></div><span className="required">* Required fields</span></div><label>Issue title<input required placeholder="e.g. Severe potholes on Main Road" /></label><div className="two-col"><label>Category<select required defaultValue=""><option value="" disabled>Select a category</option><option>Infrastructure &amp; Roads</option><option>Water Supply</option><option>Sanitation &amp; Waste</option><option>Electricity</option></select></label><label>Location<input required placeholder="e.g. Ranchi, Hinoo Area" /></label></div><label>Description <textarea required rows="5" value={problemText} onChange={event => setProblemText(event.target.value)} placeholder="Briefly describe the issue..." /></label><label>Photo evidence <div className="upload"><Icon>add_a_photo</Icon><b>Click to upload</b><span>or drag and drop images here</span></div></label><div className="form-actions"><button type="button" className="outline-button">Save draft</button><button className="primary-button" type="submit" disabled={isLoading}>{isLoading ? 'Checking...' : <>Continue to refinement <Icon>arrow_forward</Icon></>}</button></div>{error && <div className="error-message"><Icon>error</Icon>{error}</div>}{result !== null && <div className="prediction-result"><strong>Predicted category</strong><span>{result?.category || 'No category returned'}</span></div>}</form><aside className="ai-card"><div className="ai-orb"><Icon>auto_awesome</Icon></div><span className="eyebrow">Powered by Sahyog AI</span><h2>AI Problem Refiner</h2><p>I'll help structure your report for faster government action by asking a few clarifying questions.</p><div className="ai-question"><Icon>lightbulb</Icon><div><b>Tip</b><span>Specific landmarks and nearby areas help field teams respond faster.</span></div></div></aside></section></> }
+
+function ReportPage() {
+  const [problemText, setProblemText] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [coordinates, setCoordinates] = useState(null);
+  const [result, setResult] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const submitReport = async event => {
+    event.preventDefault();
+    setIsLoading(true);
+    setResult(null);
+    setError('');
+    try {
+      const response = await fetch('http://localhost:8000/predict', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: problemText }) });
+      const responseText = await response.text();
+      let responseValue;
+      try { responseValue = JSON.parse(responseText); } catch { responseValue = responseText; }
+      if (!response.ok) throw new Error(typeof responseValue === 'string' ? responseValue : JSON.stringify(responseValue));
+      setResult(responseValue);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : 'Unable to reach the prediction service.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return <><PageHeader eyebrow="Citizen services / New report" title="Report a civic issue" description="Your report helps improve Jharkhand. Let's gather the details." /><div className="progress"><span className="filled" /><span className="progress-label active">1 Initial details</span><span className="progress-label">2 AI refinement</span><span className="progress-label">3 Review &amp; submit</span></div><section className="report-grid"><form className="panel form-panel" onSubmit={submitReport}><div className="panel-head"><div><span className="eyebrow">Step 1 of 3</span><h2>Issue details</h2></div><span className="required">* Required fields</span></div><label>Issue title<input required placeholder="e.g. Severe potholes on Main Road" /></label><label>Location <LocationPicker onSelect={setCoordinates} />{coordinates && <span className="selected-coordinates">Selected: {coordinates.latitude.toFixed(6)}, {coordinates.longitude.toFixed(6)}</span>}</label><label>Description <textarea required rows="5" value={problemText} onChange={event => setProblemText(event.target.value)} placeholder="Briefly describe the issue..." /></label><label>Photo evidence <div className="upload"><Icon>add_a_photo</Icon><b>{selectedFile ? selectedFile.name : 'Click to upload'}</b><span>{selectedFile ? 'Image selected' : 'Choose an image from your device'}</span><input type="file" accept="image/*" onChange={event => setSelectedFile(event.target.files[0] || null)} /></div></label><div className="form-actions"><button type="button" className="outline-button">Save draft</button><button className="primary-button" type="submit" disabled={isLoading}>{isLoading ? 'Checking...' : <>Continue to refinement <Icon>arrow_forward</Icon></>}</button></div>{error && <div className="error-message"><Icon>error</Icon>{error}</div>}{result !== null && <div className="prediction-result"><strong>Predicted category</strong><span>{result?.category || 'No category returned'}</span></div>}</form><aside className="ai-card"><div className="ai-orb"><Icon>auto_awesome</Icon></div><span className="eyebrow">Powered by Sahyog AI</span><h2>AI Problem Refiner</h2><p>I'll help structure your report for faster government action by asking a few clarifying questions.</p><div className="ai-question"><Icon>lightbulb</Icon><div><b>Tip</b><span>Specific landmarks and nearby areas help field teams respond faster.</span></div></div></aside></section></>;
+}
 
 function UniversityPage() { return <><div className="research-hero"><div><span className="eyebrow light">State R&amp;D Directorate</span><h1>University Hub</h1><p>Match real civic challenges with the research teams equipped to solve them.</p></div><div className="hero-metric"><strong>48</strong><span>active research teams</span></div></div><PageHeader eyebrow="Jharkhand Academic Network" title="Find the right expertise" description="Browse verified labs and open challenge briefs across the state." action={<button className="outline-button"><Icon>tune</Icon> Match filters</button>} /><div className="hub-grid"><section className="panel"><div className="panel-head"><h2>Open challenge briefs</h2><span className="count-badge">24 matches</span></div>{['Low-cost water quality sensors', 'Climate-resilient rural roads', 'Waste-to-value pilot program'].map((x, i) => <div className="brief" key={x}><span className="brief-icon"><Icon>{['water_drop', 'route', 'recycling'][i]}</Icon></span><div><b>{x}</b><span>{['BIT Mesra · Water Systems Lab', 'IIT (ISM) Dhanbad · Civil Engineering', 'XLRI Jamshedpur · Social Innovation'][i]}</span><small>{[12, 8, 5][i]} teams interested</small></div><Icon>arrow_forward</Icon></div>)}</section><section className="panel match-panel"><span className="eyebrow">Quick match</span><h2>What are you working on?</h2><p>Tell us the capability you need and we will surface relevant institutions.</p><select defaultValue=""><option value="" disabled>Select a research area</option><option>Environmental engineering</option><option>Data and GIS</option><option>Social policy</option></select><button className="primary-button">Find research teams <Icon>search</Icon></button></section></div></> }
 
-function ActivityPage() { return <><PageHeader eyebrow="Audit trail / Ticket CH-26043" title="Activity log" description="A transparent record of every action taken on this challenge." action={<Status>In Progress</Status>} /><section className="activity-layout"><div className="panel activity-card"><div className="ticket-summary"><span className="eyebrow">CH-26043 · Infrastructure</span><h2>Severe potholes on Main Road</h2><p>Reported by Anil Kumar · Ranchi Municipal Area</p></div>{[['Resolved', 'Field work completed and road surface restored.', 'Today, 10:42 AM', 'verified'], ['Assigned', 'Assigned to Ranchi Municipal Corporation field team.', 'Yesterday, 3:15 PM', 'assignment'], ['Under Review', 'Report verified by the district operations desk.', '12 Jun 2025, 9:20 AM', 'rate_review'], ['Submitted', 'Issue submitted through Jharkhand Sahyog.', '11 Jun 2025, 6:48 PM', 'send']].map((event, i) => <div className={`timeline-event ${i === 0 ? 'complete' : ''}`} key={event[0]}><div className="timeline-icon"><Icon>{event[3]}</Icon></div><div><div className="event-meta"><b>{event[0]}</b><span>{event[2]}</span></div><p>{event[1]}</p>{i === 0 && <button className="text-button">View field evidence <Icon>arrow_forward</Icon></button>}</div></div>)}</div><aside className="panel details-panel"><span className="eyebrow">Challenge details</span><h2>Resolution progress</h2><div className="progress-ring"><strong>100%</strong><span>resolved</span></div><dl><div><dt>District</dt><dd>Ranchi</dd></div><div><dt>Category</dt><dd>Infrastructure</dd></div><div><dt>Priority</dt><dd><Status>Urgent</Status></dd></div><div><dt>Assigned team</dt><dd>RMC Field Ops</dd></div></dl></aside></section></> }
+function ActivityPage() { return <><PageHeader eyebrow="Audit trail / Ticket CH-26043" title="Activity log" description="A transparent record of every action taken on this challenge." action={<Status>In Progress</Status>} /><section className="activity-layout"><div className="panel activity-card"><div className="ticket-summary"><span className="eyebrow">CH-26043 · Infrastructure</span><h2>Severe potholes on Main Road</h2><p>Reported by Anil Kumar · Ranchi Municipal Area</p></div>{[['Resolved', 'Field work completed and road surface restored.', 'Today, 10:42 AM', 'verified'], ['Assigned', 'Assigned to Ranchi Municipal Corporation field team.', 'Yesterday, 3:15 PM', 'assignment'], ['Under Review', 'Report verified by the district operations desk.', '12 Jun 2025, 9:20 AM', 'rate_review'], ['Submitted', 'Issue submitted through Jharkhand Samadhan.', '11 Jun 2025, 6:48 PM', 'send']].map((event, i) => <div className={`timeline-event ${i === 0 ? 'complete' : ''}`} key={event[0]}><div className="timeline-icon"><Icon>{event[3]}</Icon></div><div><div className="event-meta"><b>{event[0]}</b><span>{event[2]}</span></div><p>{event[1]}</p>{i === 0 && <button className="text-button">View field evidence <Icon>arrow_forward</Icon></button>}</div></div>)}</div><aside className="panel details-panel"><span className="eyebrow">Challenge details</span><h2>Resolution progress</h2><div className="progress-ring"><strong>100%</strong><span>resolved</span></div><dl><div><dt>District</dt><dd>Ranchi</dd></div><div><dt>Category</dt><dd>Infrastructure</dd></div><div><dt>Priority</dt><dd><Status>Urgent</Status></dd></div><div><dt>Assigned team</dt><dd>RMC Field Ops</dd></div></dl></aside></section></> }
 
 function ImpactPage({ onNavigate }) { return <><div className="impact-hero"><div><span className="eyebrow light">State verified impact · Vol. IV</span><h1>Public impact &amp; resolution case studies</h1><p>An authoritative registry of solutions deployed in partnership between state departments and academic institutions.</p></div><button className="light-button" onClick={() => onNavigate('/story')}><Icon>auto_stories</Icon> Read featured story</button></div><PageHeader eyebrow="Verified resolutions" title="Field deployments" description="Measured outcomes from challenges moved from report to resolution." /><div className="case-grid">{[['Kanke Reservoir Water Supply', 'Ranchi District', '15,000', 'residents reached', 'water_drop'], ['Rural Road Restoration', 'Latehar District', '42 km', 'road restored', 'route'], ['Solar Microgrid Pilot', 'Gumla District', '340', 'households connected', 'wb_sunny']].map((item, i) => <article className="case-card" key={item[0]}><div className={`case-image case-${i}`}><Icon>{item[4]}</Icon><span>VERIFIED IMPACT</span></div><div className="case-content"><span className="eyebrow">{item[1]} · Completed</span><h2>{item[0]}</h2><p>Community-led implementation with transparent reporting and measurable public outcomes.</p><div className="case-stat"><strong>{item[2]}</strong><span>{item[3]}</span></div><button className="text-button" onClick={() => onNavigate('/story')}>View case study <Icon>arrow_forward</Icon></button></div></article>)}</div></> }
 
