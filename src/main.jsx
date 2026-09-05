@@ -8,6 +8,17 @@ import './styles.css';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUPABASE_URL';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'SUPABASE_KEY';
 
+const URL = "https://api.tanmayb.in/"
+
+async function fetchIssueConditionDetails() {
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/issuecond?select=issue_details`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, Accept: 'application/json' },
+  });
+  if (!response.ok) throw new Error(`Supabase request failed (${response.status}): ${await response.text()}`);
+  const rows = await response.json();
+  return rows.map(row => typeof row.issue_details === 'string' ? JSON.parse(row.issue_details) : row.issue_details).filter(Boolean);
+}
+
 const navItems = [
   { label: 'Dashboard', icon: 'dashboard', path: '/' },
   { label: 'Tickets', icon: 'confirmation_number', path: '/tickets' },
@@ -22,13 +33,6 @@ const challenges = [
   ['CH-26039', 'Irregular water supply in Ward 12', 'Water Supply', 'Bokaro', 'In Progress'],
   ['CH-26031', 'Streetlights not working near school', 'Electricity', 'Dhanbad', 'Under Review'],
   ['CH-26018', 'Waste collection point overflow', 'Sanitation', 'Jamshedpur', 'Resolved'],
-];
-
-const activeTickets = [
-  { id: 'TKT-1048', title: 'Low-cost water quality sensors', category: 'Water & Sanitation', district: 'Ranchi', priority: '100%', posted: '2 hours ago', skills: 'IoT · Environmental engineering', applicants: 4 },
-  { id: 'TKT-1045', title: 'Climate-resilient rural roads', category: 'Infrastructure', district: 'Latehar', priority: '50%', posted: 'Yesterday', skills: 'Civil engineering · GIS', applicants: 2 },
-  { id: 'TKT-1041', title: 'Waste-to-value pilot program', category: 'Sanitation', district: 'Jamshedpur', priority: '50%', posted: '2 days ago', skills: 'Social innovation · Circular economy', applicants: 6 },
-  { id: 'TKT-1037', title: 'Solar microgrid for remote schools', category: 'Energy', district: 'Gumla', priority: '100%', posted: '3 days ago', skills: 'Renewable energy · Electrical engineering', applicants: 3 },
 ];
 
 function Icon({ children }) { return <span className="material-symbols-outlined">{children}</span>; }
@@ -124,7 +128,37 @@ function Dashboard({ onNavigate }) {
   </>;
 }
 
+function useIssueConditionTickets() {
+  const [state, setState] = useState({ tickets: [], isLoading: true, error: '' });
+  useEffect(() => {
+    let isMounted = true;
+    fetchIssueConditionDetails().then(details => {
+      if (!isMounted) return;
+      setState({
+        isLoading: false,
+        error: '',
+        tickets: details.map((issue, index) => ({
+          id: issue.ISSUEID || `ISSUE-${index + 1}`,
+          title: `${issue.category || 'Civic issue'} cluster`,
+          category: issue.category || 'Uncategorized',
+          district: `${Number(issue.latitude).toFixed(5)}, ${Number(issue.longitude).toFixed(5)}`,
+          priority: `${Math.round(Number(issue.weight || 0) * 100)}%`,
+          posted: 'Live from issuecond',
+          skills: `${issue.issues || 0} clustered reports`,
+          applicants: 0,
+        })),
+      });
+    }).catch(error => {
+      if (isMounted) setState({ tickets: [], isLoading: false, error: error instanceof Error ? error.message : 'Unable to load clustered issues.' });
+    });
+    return () => { isMounted = false; };
+  }, []);
+  return state;
+}
+
 function TicketsPage() {
+  const { tickets, isLoading, error } = useIssueConditionTickets();
+  const activeTickets = tickets;
   const [accepted, setAccepted] = useState([]);
   const acceptTicket = id => setAccepted(current => current.includes(id) ? current : [...current, id]);
   return <><PageHeader eyebrow="University collaboration / Ticket queue" title="Active tickets" description="Help move verified civic challenges from the queue into university-led solutions." action={<button className="outline-button"><Icon>filter_alt</Icon> Filter tickets</button>} />
@@ -233,7 +267,7 @@ function LegacyReportPage() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:8000/predict', {
+      const response = await fetch(`${URL}predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: problemText }),
@@ -270,7 +304,7 @@ function ReportPage() {
     setResult(null);
     setError('');
     try {
-      const predictionResponse = await fetch('http://localhost:8000/predict', {
+      const predictionResponse = await fetch(`${URL}predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: problemText }),
@@ -283,7 +317,7 @@ function ReportPage() {
         ? predictionValue
         : predictionValue?.category || predictionOutput;
 
-      const response = await fetch('http://localhost:8000/issues', {
+      const response = await fetch(`${URL}issues`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
