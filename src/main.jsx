@@ -176,7 +176,6 @@ function TicketsPage() {
   const [accepted, setAccepted] = useState([]);
   const acceptTicket = id => setAccepted(current => current.includes(id) ? current : [...current, id]);
   return <><PageHeader eyebrow="University collaboration / Ticket queue" title="Active tickets" description="Help move verified civic challenges from the queue into university-led solutions." action={<button className="outline-button"><Icon>filter_alt</Icon> Filter tickets</button>} />
-    <div className="ticket-summary-bar"><div><strong>{activeTickets.length - accepted.length}</strong><span>tickets open for acceptance</span></div><div><strong>{accepted.length}</strong><span>accepted by your institution</span></div><div className="ticket-note"><Icon>info</Icon><span>Accept a ticket to start a collaboration request with the state operations team.</span></div></div>
     <section className="ticket-layout"><div className="panel ticket-list"><div className="panel-head"><div><span className="eyebrow">Open collaboration requests</span><h2>Find a challenge to solve</h2></div><span className="count-badge">{activeTickets.length} active</span></div>{activeTickets.map(ticket => { const isAccepted = accepted.includes(ticket.id); return <article className={`ticket-row ${isAccepted ? 'accepted' : ''}`} key={ticket.id}><div className="ticket-icon"><Icon>confirmation_number</Icon></div><div className="ticket-info"><div className="ticket-row-head"><span className="mono">{ticket.id}</span><Status>{ticket.priority}</Status></div><h3>{ticket.title}</h3><div className="ticket-meta"><span><Icon>category</Icon>{ticket.category}</span><span><Icon>location_on</Icon>{ticket.district} District</span><span><Icon>schedule</Icon>Posted {ticket.posted}</span></div><p><Icon>psychology</Icon>{ticket.skills}</p></div><div className="ticket-action"><small>{ticket.applicants} universities interested</small><button className={isAccepted ? 'accepted-button' : 'primary-button'} onClick={() => acceptTicket(ticket.id)} disabled={isAccepted}>{isAccepted ? <><Icon>check_circle</Icon> Accepted</> : <><Icon>handshake</Icon> Accept ticket</>}</button></div></article>; })}</div><aside className="panel university-side-card"><div className="university-mark"><Icon>school</Icon></div><span className="eyebrow">For university teams</span><h2>Build civic impact</h2><p>Accepted tickets appear in your institution workspace, where you can add researchers, propose a solution, and share progress with district officers.</p><div className="side-step"><span>1</span><div><b>Accept a ticket</b><small>Claim a challenge that matches your expertise.</small></div></div><div className="side-step"><span>2</span><div><b>Form your team</b><small>Invite faculty, students, and partner labs.</small></div></div><div className="side-step"><span>3</span><div><b>Submit a proposal</b><small>Share a scoped plan with the state.</small></div></div><button className="text-button">View my accepted tickets <Icon>arrow_forward</Icon></button></aside></section>
   </>;
 }
@@ -276,6 +275,10 @@ function LegacyReportPage() {
       setError('Please select your location on the map before continuing.');
       return;
     }
+    if (!problemText.trim()) {
+      setError('Please describe the issue before continuing.');
+      return;
+    }
     setIsLoading(true);
     setResult(null);
     setError('');
@@ -308,13 +311,20 @@ function ReportPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    document.querySelectorAll('.form-panel input[placeholder="e.g. Severe potholes on Main Road"]').forEach(input => input.removeAttribute('required'));
+  }, []);
+
   const submitReport = async event => {
     event.preventDefault();
     if (!coordinates) {
       setError('Please select your location on the map before continuing.');
       return;
     }
-    setIsLoading(true);
+    if (!problemText.trim()) {
+      setError('Please describe the issue before continuing.');
+      return;
+    }
     setResult(null);
     setError('');
     try {
@@ -340,7 +350,6 @@ function ReportPage() {
           description: predictedDescription,
         }),
       });
-      console.log(predictedDescription)
       const responseText = await response.text();
       let responseValue;
       try { responseValue = JSON.parse(responseText); } catch { responseValue = responseText; }
