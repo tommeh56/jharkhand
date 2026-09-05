@@ -234,7 +234,7 @@ function JharkhandHeatmap({ onPointsLoaded }) {
         points.forEach(point => {
           const color = getHeatmapColor(point.weight, maximumWeight);
           L.circle([point.latitude, point.longitude], {
-            radius: 300 + point.weight * 55,
+            radius: 300 + point.weight * 100,
             color,
             fillColor: color,
             fillOpacity: 0.58,
