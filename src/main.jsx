@@ -4,6 +4,20 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './styles.css';
 
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconRetina from 'leaflet/dist/images/marker-icon-2x.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+delete L.Icon.Default.prototype._getIconUrl;
+
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: iconRetina.src || iconRetina,
+  iconUrl: icon.src || icon,
+  shadowUrl: iconShadow.src || iconShadow,
+});
+
+
+
 // Set VITE_SUPABASE_URL and VITE_SUPABASE_KEY in a local .env file.
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'SUPABASE_URL';
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY || 'SUPABASE_KEY';
